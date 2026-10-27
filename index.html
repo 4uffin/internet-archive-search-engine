@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archive Seek — search the Internet Archive &amp; Wayback Machine</title>
+<style>
+:root{--bg:#fff;--fg:#222;--mut:#666;--line:#ddd;--card:#f6f6f6;--link:#2a6fb0;--top:#1b1b1b;--bar:#428bca;--warn:#fff4d6;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e6e6e6;--mut:#999;--line:#333;--card:#202020;--link:#6db3f2;--top:#000;--bar:#4a90d0;--warn:#3a321a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 "Helvetica Neue",Helvetica,Arial,sans-serif}
+a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+header{background:var(--top);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header b{font-size:18px;letter-spacing:.3px}header span{color:#aaa;font-size:13px}
+main{max-width:980px;margin:0 auto;padding:18px 14px 60px}
+.tabs{display:flex;gap:4px;margin-bottom:10px}
+.tabs button{padding:8px 14px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:4px 4px 0 0;cursor:pointer;font:inherit}
+.tabs button[aria-selected=true]{background:var(--top);color:#fff;border-color:var(--top)}
+.search{display:flex;gap:8px;flex-wrap:wrap}
+.search input[type=text]{flex:1;min-width:220px;padding:10px 12px;font:inherit;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg)}
+button.go{padding:10px 18px;background:var(--bar);color:#fff;border:0;border-radius:4px;font:inherit;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+.opts{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0;font-size:13px;color:var(--mut);align-items:center}
+select{padding:5px;font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px}
+.note{background:var(--warn);border:1px solid var(--line);padding:8px 10px;border-radius:4px;font-size:13px;margin:10px 0}
+#status{color:var(--mut);margin:12px 0;font-size:13px;min-height:18px}
+.item{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.item img{width:84px;height:84px;object-fit:cover;background:var(--card);border-radius:3px;flex:none}
+.item h3{margin:0 0 2px;font-size:16px;font-weight:600}
+.meta{font-size:12px;color:var(--mut)}
+.desc{font-size:13px;margin-top:4px;color:var(--fg);opacity:.85}
+.tag{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:0 7px;font-size:11px;margin-right:6px}
+.pager{display:flex;gap:8px;align-items:center;margin-top:14px}
+.pager button{padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:4px;cursor:pointer}
+.snap{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin-bottom:12px}
+.chart{display:flex;align-items:flex-end;gap:2px;height:90px;margin:10px 0 4px;overflow-x:auto;padding-bottom:2px}
+.chart div{flex:1 0 12px;background:var(--bar);min-height:2px;cursor:pointer;opacity:.75}
+.chart div:hover,.chart div.on{opacity:1;outline:2px solid var(--fg)}
+.row{display:grid;grid-template-columns:150px 54px 140px 1fr;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+.row .u{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scroll{overflow-x:auto}
+@media(max-width:600px){.row{grid-template-columns:120px 44px 1fr}.row .m{display:none}}
+footer{font-size:12px;color:var(--mut);margin-top:30px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<header><b>Archive Seek</b><span>search the Internet Archive &amp; Wayback Machine · unofficial</span></header>
+<main>
+<div class="tabs" role="tablist">
+  <button role="tab" id="t-items" aria-selected="true" title="Search books, video, audio, software and more in archive.org collections">Library items</button>
+  <button role="tab" id="t-wb" aria-selected="false" title="Look up archived captures of a web page or site in the Wayback Machine">Wayback pages</button>
+</div>
+<form class="search" id="f">
+  <input type="text" id="q" autocomplete="off" spellcheck="false" aria-label="Search">
+  <button class="go" id="go" title="Run the search (nothing is sent until you press this)">Search</button>
+</form>
+<div class="opts" id="opts"></div>
+<div id="hint" class="note"></div>
+<div id="status" role="status"></div>
+<div id="out"></div>
+<footer>
+Data comes straight from archive.org’s public APIs (Advanced Search, Wayback Availability, CDX) in your browser. Requests are only sent when you press Search, run one at a time, are spaced at least a second apart, and are cached for the session. Results link out to archive.org — nothing is mirrored. If you rely on it heavily, consider <a href="https://archive.org/donate" target="_blank" rel="noopener">donating to the Archive</a>.
+</footer>
+</main>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cache=new Map();let last=0,ctl=null,busy=false;
+let mode="items",page=1,wbRows=[],wbYear=null;
+
+// Polite fetch: serialized, >=1s spacing, cached, abortable.
+async function polite(url){
+  if(cache.has(url))return cache.get(url);
+  if(busy)throw new Error("A request is already running.");
+  busy=true;$("#go").disabled=true;
+  try{
+    const wait=last+1000-Date.now();if(wait>0)await new Promise(r=>setTimeout(r,wait));
+    ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),25000);
+    const r=await fetch(url,{signal:ctl.signal,headers:{Accept:"application/json"}});
+    clearTimeout(t);last=Date.now();
+    if(r.status===429)throw new Error("archive.org asked us to slow down (HTTP 429). Please wait a minute and try again.");
+    if(!r.ok)throw new Error("archive.org returned HTTP "+r.status+".");
+    const txt=await r.text();let j=[];if(txt.trim())j=JSON.parse(txt);
+    cache.set(url,j);return j;
+  }finally{busy=false;$("#go").disabled=false}
+}
+
+const TYPES=["","texts","movies","audio","image","software","web","data","etree","collection"];
+function buildOpts(){
+  if(mode==="items"){
+    $("#q").placeholder="Search the Archive… e.g. apollo 11 transcript, creator:(Carl Sagan)";
+    $("#hint").innerHTML="Supports Lucene syntax: <code>title:(moby dick)</code>, <code>creator:sagan</code>, <code>date:[1990-01-01 TO 1999-12-31]</code>.";
+    $("#opts").innerHTML=`<label>Type <select id="ty" title="Limit results to one kind of media">${TYPES.map(t=>`<option value="${t}">${t||"All media"}</option>`).join("")}</select></label>
+    <label>Sort <select id="so" title="Order of results"><option value="">Relevance</option><option value="downloads desc">Most downloaded</option><option value="date desc">Newest by item date</option><option value="date asc">Oldest by item date</option><option value="addeddate desc">Recently added</option></select></label>`;
+  }else{
+    $("#q").placeholder="Enter a URL or domain… e.g. example.com/page";
+    $("#hint").innerHTML="Shows archived captures (one per month) and the closest snapshot. “Whole site” lists unique archived pages under a prefix.";
+    $("#opts").innerHTML=`<label>Scope <select id="sc" title="One URL’s history, or unique pages under a path/domain"><option value="exact">This exact URL</option><option value="prefix">Whole site / path prefix</option></select></label>
+    <label>Status <select id="st" title="Filter by HTTP status of the capture"><option value="200">200 OK only</option><option value="">Any</option></select></label>`;
+  }
+}
+function setMode(m){mode=m;page=1;$("#t-items").setAttribute("aria-selected",m==="items");$("#t-wb").setAttribute("aria-selected",m==="wb");buildOpts();$("#out").innerHTML="";$("#status").textContent=""}
+$("#t-items").onclick=()=>setMode("items");$("#t-wb").onclick=()=>setMode("wb");
+
+$("#f").onsubmit=e=>{e.preventDefault();page=1;run()};
+async function run(){
+  const q=$("#q").value.trim();if(!q&&!($("#ty")&&$("#ty").value)){$("#status").textContent="Type something to search.";return}
+  history.replaceState(null,"","#"+new URLSearchParams({m:mode,q,p:page,...(mode==="items"?{ty:$("#ty").value,so:$("#so").value}:{sc:$("#sc").value,st:$("#st").value})}));
+  $("#status").textContent="Searching…";
+  try{mode==="items"?await searchItems(q):await searchWayback(q)}
+  catch(err){$("#status").textContent=err.name==="AbortError"?"The request timed out. Try again.":"⚠ "+err.message}
+}
+
+async function searchItems(q){
+  const ty=$("#ty").value,so=$("#so").value,rows=24;
+  const query=ty?(q?`(${q}) AND mediatype:${ty}`:`mediatype:${ty}`):q;
+  const p=new URLSearchParams({q:query,rows,page,output:"json"});
+  ["identifier","title","creator","mediatype","downloads","date","description"].forEach(f=>p.append("fl[]",f));
+  if(so)p.append("sort[]",so);
+  const j=await polite("https://archive.org/advancedsearch.php?"+p);
+  const r=j.response||{numFound:0,docs:[]};
+  const pages=Math.ceil(r.numFound/rows);
+  $("#status").textContent=r.numFound.toLocaleString()+" items · page "+page+" of "+Math.max(pages,1);
+  const d=x=>Array.isArray(x)?x.join(" "):(x||"");
+  $("#out").innerHTML=r.docs.map(x=>{
+    const href="https://archive.org/details/"+encodeURIComponent(x.identifier);
+    const desc=d(x.description).replace(/<[^>]*>/g," ").slice(0,260);
+    return `<div class="item"><a href="${href}" target="_blank" rel="noopener" title="Open on archive.org"><img loading="lazy" alt="" src="https://archive.org/services/img/${encodeURIComponent(x.identifier)}"></a>
+    <div><h3><a href="${href}" target="_blank" rel="noopener">${esc(d(x.title)||x.identifier)}</a></h3>
+    <div class="meta"><span class="tag">${esc(x.mediatype)}</span>${x.creator?esc(d(x.creator))+" · ":""}${x.date?esc(String(x.date).slice(0,10))+" · ":""}${(x.downloads||0).toLocaleString()} downloads</div>
+    <div class="desc">${esc(desc)}${desc.length>=260?"…":""}</div></div></div>`}).join("")
+    +(pages>1?`<div class="pager"><button id="pv" ${page<2?"disabled":""}>← Prev</button><button id="nx" ${page>=pages?"disabled":""}>Next →</button></div>`:"");
+  const pv=$("#pv"),nx=$("#nx");
+  if(pv)pv.onclick=()=>{page--;run();scrollTo(0,0)};if(nx)nx.onclick=()=>{page++;run();scrollTo(0,0)};
+}
+
+const fmt=ts=>`${ts.slice(0,4)}-${ts.slice(4,6)}-${ts.slice(6,8)} ${ts.slice(8,10)}:${ts.slice(10,12)}`;
+const wb=(ts,u)=>`https://web.archive.org/web/${ts}/${u}`;
+async function searchWayback(q){
+  const prefix=$("#sc").value==="prefix",st=$("#st").value;
+  let snapHtml="";
+  if(!prefix){
+    const a=await polite("https://archive.org/wayback/available?url="+encodeURIComponent(q));
+    const c=a.archived_snapshots&&a.archived_snapshots.closest;
+    snapHtml=`<div class="snap">${c?`Closest snapshot: <a href="${esc(c.url)}" target="_blank" rel="noopener">${fmt(c.timestamp)} UTC</a> (status ${esc(c.status)})`:"No snapshot found for this URL."}
+    · <a href="https://web.archive.org/save/${esc(q)}" target="_blank" rel="noopener" title="Opens the Wayback Machine’s own Save Page Now form — you choose whether to submit">Save this page now ↗</a></div>`;
+  }
+  const p=new URLSearchParams({url:q,output:"json",limit:prefix?"300":"1000"});
+  ["timestamp","original","mimetype","statuscode"].forEach(f=>p.append("fl",f));
+  if(st)p.append("filter","statuscode:"+st);
+  if(prefix){p.set("matchType","prefix");p.set("collapse","urlkey");p.append("filter","mimetype:text/html")}
+  else p.set("collapse","timestamp:6");
+  const j=await polite("https://web.archive.org/cdx/search/cdx?"+p);
+  wbRows=(j||[]).slice(1).map(r=>({ts:r[0],u:r[1],mt:r[2],sc:r[3]}));wbYear=null;
+  $("#status").textContent=wbRows.length+(wbRows.length>=(prefix?300:1000)?"+":"")+(prefix?" unique pages":" monthly captures");
+  $("#out").innerHTML=snapHtml+'<div id="chart"></div><div id="rows" class="scroll"></div>';
+  drawWb(prefix);
+}
+function drawWb(prefix){
+  if(!prefix&&wbRows.length){
+    const by={};wbRows.forEach(r=>by[r.ts.slice(0,4)]=(by[r.ts.slice(0,4)]||0)+1);
+    const ys=Object.keys(by).sort(),max=Math.max(...Object.values(by));
+    $("#chart").innerHTML=`<div class="meta">Captures per year — click a bar to filter</div><div class="chart">${ys.map(y=>`<div data-y="${y}" class="${wbYear===y?"on":""}" style="height:${Math.max(3,by[y]/max*100)}%" title="${y}: ${by[y]} monthly captures"></div>`).join("")}</div><div class="meta">${ys[0]} – ${ys[ys.length-1]}</div>`;
+    document.querySelectorAll(".chart div").forEach(d=>d.onclick=()=>{wbYear=wbYear===d.dataset.y?null:d.dataset.y;drawWb(false)});
+  }
+  const rows=(wbYear?wbRows.filter(r=>r.ts.startsWith(wbYear)):wbRows).slice().reverse();
+  $("#rows").innerHTML=rows.map(r=>`<div class="row"><a href="${esc(wb(r.ts,r.u))}" target="_blank" rel="noopener" title="Open this capture in the Wayback Machine">${fmt(r.ts)}</a><span title="HTTP status">${esc(r.sc)}</span><span class="m meta">${esc(r.mt)}</span><span class="u" title="${esc(r.u)}">${esc(r.u)}</span></div>`).join("")||'<div class="meta">Nothing found.</div>';
+}
+
+// restore from shareable hash (does not auto-search unless a query is present)
+(function(){
+  const h=new URLSearchParams(location.hash.slice(1));
+  setMode(h.get("m")==="wb"?"wb":"items");
+  if(h.get("q")!==null)$("#q").value=h.get("q");
+  if(mode==="items"){if(h.get("ty"))$("#ty").value=h.get("ty");if(h.get("so"))$("#so").value=h.get("so")}
+  else{if(h.get("sc"))$("#sc").value=h.get("sc");if(h.get("st")!==null)$("#st").value=h.get("st")}
+  page=+h.get("p")||1;
+  if(h.get("q"))run();
+})();
+</script>
+</body>
+</html>
