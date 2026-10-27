@@ -36,32 +36,58 @@ select{padding:5px;font:inherit;background:var(--bg);color:var(--fg);border:1px 
 .chart{display:flex;align-items:flex-end;gap:2px;height:90px;margin:10px 0 4px;overflow-x:auto;padding-bottom:2px}
 .chart div{flex:1 0 12px;background:var(--bar);min-height:2px;cursor:pointer;opacity:.75}
 .chart div:hover,.chart div.on{opacity:1;outline:2px solid var(--fg)}
-.row{display:grid;grid-template-columns:150px 54px 140px 1fr;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+.row{display:grid;grid-template-columns:22px 150px 54px 140px 1fr;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
 .row .u{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scroll{overflow-x:auto}
-@media(max-width:600px){.row{grid-template-columns:120px 44px 1fr}.row .m{display:none}}
+@media(max-width:600px){.row{grid-template-columns:22px 120px 44px 1fr}.row .m{display:none}}
+.opts input[type=text],.opts input:not([type]){padding:5px;font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px}
+.add,.del{padding:1px 6px;font:12px/1.4 monospace;white-space:pre-wrap;word-break:break-word}
+.add{background:#2da44e2a}.del{background:#cf222e2a}#diffout{margin:10px 0}#cmp{margin:6px 0}#cmp .go{padding:4px 10px}
+.hl{color:#9cc9f0;font-size:12px;margin-left:8px;white-space:nowrap}
+.hp{margin-left:auto;background:none;border:1px solid #666;color:#bbb;border-radius:12px;padding:2px 10px;font:12px "Helvetica Neue",Arial,sans-serif;cursor:pointer}
+.hp[data-s=ok]{color:#6fdc8c;border-color:#2f7a45}.hp[data-s=slow],.hp[data-s=limited]{color:#ffd166;border-color:#8a6d1d}.hp[data-s=down]{color:#ff7b72;border-color:#8a2f2a}
+#lib{margin:10px 0;border:1px solid var(--line);border-radius:4px;padding:6px 10px;background:var(--card)}#lib summary{cursor:pointer;font-size:13px}
+.libcols{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:600px){.libcols{grid-template-columns:1fr}}
+.li{padding:2px 0;font-size:13px}.sel{outline:2px solid var(--bar);outline-offset:2px;border-radius:4px}
+.cols{display:grid;grid-template-columns:3fr 2fr;gap:18px}
+@media(max-width:800px){.cols{grid-template-columns:1fr}}
+.cols h4,#dr h4{margin:10px 0 4px;font-size:12px;text-transform:uppercase;color:var(--mut);letter-spacing:.5px}
+#dr{position:fixed;top:0;right:0;bottom:0;width:min(540px,100vw);background:var(--bg);border-left:1px solid var(--line);box-shadow:-4px 0 18px #0005;overflow-y:auto;padding:16px;transform:translateX(105%);transition:transform .2s;z-index:20}
+#dr.open{transform:none}
+#dr h2{margin:0 28px 4px 0;font-size:19px}
+#dr .x{position:absolute;top:8px;right:12px;border:0;background:none;color:var(--fg);font-size:24px;cursor:pointer}
+#dr audio,#dr video,#dr .pv{width:100%;margin:10px 0;border-radius:4px}
+#dr iframe{width:100%;height:420px;border:1px solid var(--line);margin:10px 0}
+#dr table{width:100%;border-collapse:collapse;font-size:12px}
+#dr td{padding:3px 4px;border-top:1px solid var(--line);word-break:break-all;vertical-align:top}
 footer{font-size:12px;color:var(--mut);margin-top:30px;border-top:1px solid var(--line);padding-top:12px}
 </style>
 </head>
 <body>
-<header><b>Archive Seek</b><span>search the Internet Archive &amp; Wayback Machine · unofficial</span></header>
+<header><b>Archive Seek</b><span>search the Internet Archive &amp; Wayback Machine · unofficial</span><button id="hp" class="hp" data-s="" title="archive.org status as seen by this page. Click to run one small probe request.">● archive.org: unchecked</button><a class="hl" href="https://4uffin.github.io/internet-archive-status-dashboard/#status" target="_blank" rel="noopener" title="Open the full status dashboard with uptime history and the Archive Tides forecast">dashboard ↗</a></header>
 <main>
 <div class="tabs" role="tablist">
-  <button role="tab" id="t-items" aria-selected="true" title="Search books, video, audio, software and more in archive.org collections">Library items</button>
-  <button role="tab" id="t-wb" aria-selected="false" title="Look up archived captures of a web page or site in the Wayback Machine">Wayback pages</button>
+  <button role="tab" data-m="both" aria-selected="true" title="Search library items; if you enter a URL or domain, also show its Wayback captures">Search both</button>
+  <button role="tab" data-m="items" aria-selected="false" title="Search books, video, audio, software and more in archive.org collections">Library items</button>
+  <button role="tab" data-m="wb" aria-selected="false" title="Look up archived captures of a web page or site in the Wayback Machine">Wayback pages</button>
 </div>
 <form class="search" id="f">
   <input type="text" id="q" autocomplete="off" spellcheck="false" aria-label="Search">
   <button class="go" id="go" title="Run the search (nothing is sent until you press this)">Search</button>
+  <button type="button" class="go" id="sv" title="Save this search (s)" style="background:var(--card);color:var(--fg);border:1px solid var(--line)">☆ Save</button>
 </form>
 <div class="opts" id="opts"></div>
 <div id="hint" class="note"></div>
+<div id="help" class="note" hidden><b>/</b> focus search · <b>j</b>/<b>k</b> next/previous result · <b>Enter</b>/<b>o</b> open · <b>l</b> toggle reading list · <b>n</b>/<b>p</b> next/previous page · <b>s</b> save search · <b>1</b>/<b>2</b>/<b>3</b> switch tab · <b>Esc</b> close · <b>?</b> toggle this help</div>
+<div id="hbn" class="note" hidden></div>
+<details id="lib"><summary></summary><div id="libb"></div></details>
 <div id="status" role="status"></div>
 <div id="out"></div>
 <footer>
-Data comes straight from archive.org’s public APIs (Advanced Search, Wayback Availability, CDX) in your browser. Requests are only sent when you press Search, run one at a time, are spaced at least a second apart, and are cached for the session. Results link out to archive.org — nothing is mirrored. If you rely on it heavily, consider <a href="https://archive.org/donate" target="_blank" rel="noopener">donating to the Archive</a>.
+Data comes straight from archive.org’s public APIs (Advanced Search, Wayback Availability, CDX) in your browser. Requests are only sent when you press Search, run one at a time, are spaced at least a second apart, and are cached for the session. The status pill only reflects requests you trigger (plus one tiny probe if you click it). Saved searches and the reading list stay in this browser’s localStorage — use Export to back them up. Press ? for keyboard shortcuts. For uptime history and the best times to archive, see the <a href="https://4uffin.github.io/internet-archive-status-dashboard/" target="_blank" rel="noopener">status dashboard</a>. Results link out to archive.org — nothing is mirrored. If you rely on it heavily, consider <a href="https://archive.org/donate" target="_blank" rel="noopener">donating to the Archive</a>.
 </footer>
 </main>
+<aside id="dr" aria-label="Item details"></aside>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -70,29 +96,33 @@ const cache=new Map();let last=0,ctl=null,busy=false;
 let mode="items",page=1,wbRows=[],wbYear=null;
 
 // Polite fetch: serialized, >=1s spacing, cached, abortable.
-async function polite(url){
+async function polite(url,raw){
   if(cache.has(url))return cache.get(url);
   if(busy)throw new Error("A request is already running.");
   busy=true;$("#go").disabled=true;
   try{
     const wait=last+1000-Date.now();if(wait>0)await new Promise(r=>setTimeout(r,wait));
-    ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),25000);
-    const r=await fetch(url,{signal:ctl.signal,headers:{Accept:"application/json"}});
+    const t0=Date.now();ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),25000);
+    const r=await fetch(url,{signal:ctl.signal,headers:raw?{}:{Accept:"application/json"}});
     clearTimeout(t);last=Date.now();
+    if(r.status===429)setHealth("limited");
     if(r.status===429)throw new Error("archive.org asked us to slow down (HTTP 429). Please wait a minute and try again.");
-    if(!r.ok)throw new Error("archive.org returned HTTP "+r.status+".");
-    const txt=await r.text();let j=[];if(txt.trim())j=JSON.parse(txt);
+    if(!r.ok){if(r.status>=500)setHealth("down",0,"HTTP "+r.status);throw new Error("archive.org returned HTTP "+r.status+".")}
+    const txt=await r.text();if(!raw)setHealth(Date.now()-t0>6000?"slow":"ok",Date.now()-t0);let j=raw?txt:[];if(!raw&&txt.trim())j=JSON.parse(txt);
     cache.set(url,j);return j;
-  }finally{busy=false;$("#go").disabled=false}
+  }catch(e){if(e.name==="AbortError")setHealth("slow",0,"request timed out");else if(e instanceof TypeError)setHealth("down",0,"network error");throw e}finally{busy=false;$("#go").disabled=false}
 }
 
 const TYPES=["","texts","movies","audio","image","software","web","data","etree","collection"];
 function buildOpts(){
-  if(mode==="items"){
-    $("#q").placeholder="Search the Archive… e.g. apollo 11 transcript, creator:(Carl Sagan)";
+  if(mode!=="wb"){
+    $("#q").placeholder=mode==="both"?"Search items — or enter a URL/domain to see its Wayback captures too":"Search the Archive… e.g. apollo 11 transcript, creator:(Carl Sagan)";
     $("#hint").innerHTML="Supports Lucene syntax: <code>title:(moby dick)</code>, <code>creator:sagan</code>, <code>date:[1990-01-01 TO 1999-12-31]</code>.";
     $("#opts").innerHTML=`<label>Type <select id="ty" title="Limit results to one kind of media">${TYPES.map(t=>`<option value="${t}">${t||"All media"}</option>`).join("")}</select></label>
-    <label>Sort <select id="so" title="Order of results"><option value="">Relevance</option><option value="downloads desc">Most downloaded</option><option value="date desc">Newest by item date</option><option value="date asc">Oldest by item date</option><option value="addeddate desc">Recently added</option></select></label>`;
+    <label>Sort <select id="so" title="Order of results"><option value="">Relevance</option><option value="downloads desc">Most downloaded</option><option value="date desc">Newest by item date</option><option value="date asc">Oldest by item date</option><option value="addeddate desc">Recently added</option></select></label>
+    <label>Collection <input id="co" size="12" placeholder="e.g. nasa" title="Restrict to a collection identifier"></label>
+    <label>Language <input id="la" size="6" placeholder="eng" title="Language name or code"></label>
+    <label>Years <input id="y1" size="4" placeholder="1990" title="From year"> – <input id="y2" size="4" placeholder="1999" title="To year"></label>`;
   }else{
     $("#q").placeholder="Enter a URL or domain… e.g. example.com/page";
     $("#hint").innerHTML="Shows archived captures (one per month) and the closest snapshot. “Whole site” lists unique archived pages under a prefix.";
@@ -100,35 +130,51 @@ function buildOpts(){
     <label>Status <select id="st" title="Filter by HTTP status of the capture"><option value="200">200 OK only</option><option value="">Any</option></select></label>`;
   }
 }
-function setMode(m){mode=m;page=1;$("#t-items").setAttribute("aria-selected",m==="items");$("#t-wb").setAttribute("aria-selected",m==="wb");buildOpts();$("#out").innerHTML="";$("#status").textContent=""}
-$("#t-items").onclick=()=>setMode("items");$("#t-wb").onclick=()=>setMode("wb");
+const looksUrl=q=>/^https?:\/\//i.test(q)||/^[^\s\/]+\.[a-z]{2,}(\/\S*)?$/i.test(q);
+const val=(id,d)=>{const e=$(id);return e?e.value:d};
+function setMode(m){mode=m;page=1;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.m===m));buildOpts();$("#out").innerHTML="";$("#status").textContent=""}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 
 $("#f").onsubmit=e=>{e.preventDefault();page=1;run()};
 async function run(){
-  const q=$("#q").value.trim();if(!q&&!($("#ty")&&$("#ty").value)){$("#status").textContent="Type something to search.";return}
-  history.replaceState(null,"","#"+new URLSearchParams({m:mode,q,p:page,...(mode==="items"?{ty:$("#ty").value,so:$("#so").value}:{sc:$("#sc").value,st:$("#st").value})}));
-  $("#status").textContent="Searching…";
-  try{mode==="items"?await searchItems(q):await searchWayback(q)}
+  const q=$("#q").value.trim();if(!q&&!["#ty","#co","#la","#y1","#y2"].some(i=>$(i)&&$(i).value.trim())){$("#status").textContent="Type something to search.";return}
+  history.replaceState(null,"","#"+new URLSearchParams({m:mode,q,p:page,...(mode!=="wb"?{ty:$("#ty").value,so:$("#so").value,co:$("#co").value,la:$("#la").value,y1:$("#y1").value,y2:$("#y2").value}:{sc:$("#sc").value,st:$("#st").value})}));
+  $("#status").textContent="Searching…";cur=-1;
+  try{
+    if(mode==="both"){
+      $("#out").innerHTML='<div class="cols"><div><h4>Library items</h4><div class="st"></div><div id="colA"></div></div><div><h4>Wayback captures</h4><div class="st"></div><div id="colB"></div></div></div>';
+      const [sa,sb]=document.querySelectorAll(".st");
+      await searchItems(q,$("#colA"),sa);
+      if(looksUrl(q))await searchWayback(q,$("#colB"),sb);
+      else sb.textContent="Enter a URL or domain (e.g. example.com) to see its archived captures.";
+      $("#status").textContent="";
+    }else if(mode==="items")await searchItems(q,$("#out"),$("#status"));
+    else await searchWayback(q,$("#out"),$("#status"));
+    markRL();
+  }
   catch(err){$("#status").textContent=err.name==="AbortError"?"The request timed out. Try again.":"⚠ "+err.message}
 }
 
-async function searchItems(q){
-  const ty=$("#ty").value,so=$("#so").value,rows=24;
-  const query=ty?(q?`(${q}) AND mediatype:${ty}`:`mediatype:${ty}`):q;
+async function searchItems(q,root,st){
+  const ty=$("#ty").value,so=$("#so").value,rows=mode==="both"?10:24;
+  const v=id=>$(id).value.trim(),f=[];
+  if(ty)f.push("mediatype:"+ty);if(v("#co"))f.push("collection:("+v("#co")+")");if(v("#la"))f.push("language:("+v("#la")+")");
+  if(v("#y1")||v("#y2"))f.push("year:["+(v("#y1")||"0")+" TO "+(v("#y2")||"3000")+"]");
+  const query=q?(f.length?`(${q}) AND ${f.join(" AND ")}`:q):f.join(" AND ");
   const p=new URLSearchParams({q:query,rows,page,output:"json"});
   ["identifier","title","creator","mediatype","downloads","date","description"].forEach(f=>p.append("fl[]",f));
   if(so)p.append("sort[]",so);
   const j=await polite("https://archive.org/advancedsearch.php?"+p);
   const r=j.response||{numFound:0,docs:[]};
   const pages=Math.ceil(r.numFound/rows);
-  $("#status").textContent=r.numFound.toLocaleString()+" items · page "+page+" of "+Math.max(pages,1);
+  st.textContent=r.numFound.toLocaleString()+" items · page "+page+" of "+Math.max(pages,1);
   const d=x=>Array.isArray(x)?x.join(" "):(x||"");
-  $("#out").innerHTML=r.docs.map(x=>{
+  root.innerHTML=r.docs.map(x=>{
     const href="https://archive.org/details/"+encodeURIComponent(x.identifier);
     const desc=d(x.description).replace(/<[^>]*>/g," ").slice(0,260);
-    return `<div class="item"><a href="${href}" target="_blank" rel="noopener" title="Open on archive.org"><img loading="lazy" alt="" src="https://archive.org/services/img/${encodeURIComponent(x.identifier)}"></a>
-    <div><h3><a href="${href}" target="_blank" rel="noopener">${esc(d(x.title)||x.identifier)}</a></h3>
-    <div class="meta"><span class="tag">${esc(x.mediatype)}</span>${x.creator?esc(d(x.creator))+" · ":""}${x.date?esc(String(x.date).slice(0,10))+" · ":""}${(x.downloads||0).toLocaleString()} downloads</div>
+    return `<div class="item"><a class="open" data-id="${esc(x.identifier)}" href="${href}" target="_blank" rel="noopener" title="Preview details"><img loading="lazy" alt="" src="https://archive.org/services/img/${encodeURIComponent(x.identifier)}"></a>
+    <div><h3><a class="open" data-id="${esc(x.identifier)}" data-t="${esc(d(x.title)||x.identifier)}" href="${href}" target="_blank" rel="noopener" title="Preview details">${esc(d(x.title)||x.identifier)}</a></h3>
+    <div class="meta"><span class="tag">${esc(x.mediatype)}</span>${x.creator?esc(d(x.creator))+" · ":""}${x.date?esc(String(x.date).slice(0,10))+" · ":""}${(x.downloads||0).toLocaleString()} downloads · <a href="#" class="rl" data-id="${esc(x.identifier)}" data-t="${esc(d(x.title)||x.identifier)}" title="Add to or remove from your reading list (l)">+ list</a></div>
     <div class="desc">${esc(desc)}${desc.length>=260?"…":""}</div></div></div>`}).join("")
     +(pages>1?`<div class="pager"><button id="pv" ${page<2?"disabled":""}>← Prev</button><button id="nx" ${page>=pages?"disabled":""}>Next →</button></div>`:"");
   const pv=$("#pv"),nx=$("#nx");
@@ -137,8 +183,8 @@ async function searchItems(q){
 
 const fmt=ts=>`${ts.slice(0,4)}-${ts.slice(4,6)}-${ts.slice(6,8)} ${ts.slice(8,10)}:${ts.slice(10,12)}`;
 const wb=(ts,u)=>`https://web.archive.org/web/${ts}/${u}`;
-async function searchWayback(q){
-  const prefix=$("#sc").value==="prefix",st=$("#st").value;
+async function searchWayback(q,root,stEl){
+  const prefix=val("#sc","exact")==="prefix",st=val("#st","200");
   let snapHtml="";
   if(!prefix){
     const a=await polite("https://archive.org/wayback/available?url="+encodeURIComponent(q));
@@ -152,9 +198,9 @@ async function searchWayback(q){
   if(prefix){p.set("matchType","prefix");p.set("collapse","urlkey");p.append("filter","mimetype:text/html")}
   else p.set("collapse","timestamp:6");
   const j=await polite("https://web.archive.org/cdx/search/cdx?"+p);
-  wbRows=(j||[]).slice(1).map(r=>({ts:r[0],u:r[1],mt:r[2],sc:r[3]}));wbYear=null;
-  $("#status").textContent=wbRows.length+(wbRows.length>=(prefix?300:1000)?"+":"")+(prefix?" unique pages":" monthly captures");
-  $("#out").innerHTML=snapHtml+'<div id="chart"></div><div id="rows" class="scroll"></div>';
+  wbRows=(j||[]).slice(1).map(r=>({ts:r[0],u:r[1],mt:r[2],sc:r[3]}));wbYear=null;sel=[];
+  stEl.textContent=wbRows.length+(wbRows.length>=(prefix?300:1000)?"+":"")+(prefix?" unique pages":" monthly captures");
+  root.innerHTML=snapHtml+'<div id="chart"></div><div id="cmp"></div><div id="diffout"></div><div id="rows" class="scroll"></div>';
   drawWb(prefix);
 }
 function drawWb(prefix){
@@ -165,19 +211,168 @@ function drawWb(prefix){
     document.querySelectorAll(".chart div").forEach(d=>d.onclick=()=>{wbYear=wbYear===d.dataset.y?null:d.dataset.y;drawWb(false)});
   }
   const rows=(wbYear?wbRows.filter(r=>r.ts.startsWith(wbYear)):wbRows).slice().reverse();
-  $("#rows").innerHTML=rows.map(r=>`<div class="row"><a href="${esc(wb(r.ts,r.u))}" target="_blank" rel="noopener" title="Open this capture in the Wayback Machine">${fmt(r.ts)}</a><span title="HTTP status">${esc(r.sc)}</span><span class="m meta">${esc(r.mt)}</span><span class="u" title="${esc(r.u)}">${esc(r.u)}</span></div>`).join("")||'<div class="meta">Nothing found.</div>';
+  $("#rows").innerHTML=rows.map(r=>`<div class="row">${prefix?"<span></span>":`<input type="checkbox" class="pk" data-k="${esc(r.ts+"|"+r.u)}" ${sel.includes(r.ts+"|"+r.u)?"checked":""} title="Tick two captures to compare">`}<a href="${esc(wb(r.ts,r.u))}" target="_blank" rel="noopener" title="Open this capture in the Wayback Machine">${fmt(r.ts)}</a><span title="HTTP status">${esc(r.sc)}</span><span class="m meta">${esc(r.mt)}</span><span class="u" title="${esc(r.u)}">${esc(r.u)}</span></div>`).join("")||'<div class="meta">Nothing found.</div>';wirePick(prefix);
 }
 
+// ---- item detail drawer (metadata API; media loads only on user action) ----
+const dr=$("#dr");
+const fsz=n=>n>1e9?(n/1e9).toFixed(1)+" GB":n>1e6?(n/1e6).toFixed(1)+" MB":n>1e3?Math.round(n/1e3)+" KB":(n||0)+" B";
+const dl=(id,n)=>"https://archive.org/download/"+encodeURIComponent(id)+"/"+n.split("/").map(encodeURIComponent).join("/");
+const plain=x=>String(Array.isArray(x)?x.join(", "):x||"").replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]*>/g,"");
+function setI(id){const h=new URLSearchParams(location.hash.slice(1));id?h.set("i",id):h.delete("i");history.replaceState(null,"","#"+h)}
+function closeDr(){dr.classList.remove("open");dr.innerHTML="";setI(null)}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDr()});
+document.addEventListener("click",e=>{
+  const rb=e.target.closest("a.rl");
+  if(rb){e.preventDefault();toggleRL(rb.dataset.id,rb.dataset.t);return}
+  const a=e.target.closest("a.open");
+  if(a&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey){e.preventDefault();openItem(a.dataset.id)}
+  else if(!e.target.closest("#dr")&&dr.classList.contains("open"))closeDr();
+});
+async function openItem(id){
+  dr.classList.add("open");setI(id);
+  const X='<button class="x" title="Close (Esc)">×</button>';
+  dr.innerHTML=X+'<p class="meta">Loading…</p>';dr.querySelector(".x").onclick=closeDr;
+  try{
+    const j=await polite("https://archive.org/metadata/"+encodeURIComponent(id));
+    const m=j.metadata||{},fs=j.files||[];
+    if(!m.identifier&&!fs.length)throw new Error("No metadata found for this item.");
+    const pick=re=>fs.find(f=>re.test(f.name)&&!/thumb/i.test(f.name));
+    let media="";
+    if(m.mediatype==="audio"){const f=pick(/\.mp3$/i);if(f)media=`<audio controls preload="none" src="${esc(dl(id,f.name))}"></audio>`}
+    else if(m.mediatype==="movies"){const f=pick(/\.mp4$/i)||pick(/\.ogv$/i);if(f)media=`<video controls preload="none" src="${esc(dl(id,f.name))}"></video>`}
+    else if(m.mediatype==="image"){const f=pick(/\.(jpe?g|png|gif)$/i);if(f)media=`<img class="pv" alt="" loading="lazy" src="${esc(dl(id,f.name))}">`}
+    const orig=fs.filter(f=>f.source==="original"),list=(orig.length?orig:fs).slice(0,40);
+    const row=(k,v)=>v?`<tr><td>${k}</td><td>${v}</td></tr>`:"";
+    const lic=/^https?:\/\//i.test(m.licenseurl||"")?`<a href="${esc(m.licenseurl)}" target="_blank" rel="noopener">${esc(m.licenseurl)}</a>`:"";
+    dr.innerHTML=X+`<h2>${esc(plain(m.title)||id)}</h2>
+    <div class="meta"><span class="tag">${esc(m.mediatype)}</span>${esc(plain(m.creator))}</div>${media}
+    <p class="desc">${esc(plain(m.description).slice(0,900))}</p>
+    <p><a href="https://archive.org/details/${encodeURIComponent(id)}" target="_blank" rel="noopener">Open on archive.org ↗</a> · <a href="#" id="emb" title="Loads archive.org’s official embed player in this panel">Embedded viewer</a> · <a href="#" class="rl" data-id="${esc(id)}" data-t="${esc(plain(m.title)||id)}" title="Add to or remove from your reading list">+ list</a></p><div id="embx"></div>
+    <table>${row("Date",esc(plain(m.date)))}${row("Added",esc(plain(m.publicdate).slice(0,10)))}${row("Uploader",esc(plain(m.uploader)))}${row("Language",esc(plain(m.language)))}${row("Collections",esc(plain(m.collection)))}${row("License",lic)}${row("Subjects",esc(plain(m.subject)))}</table>
+    <h4>Files (${fs.length})</h4><table>${list.map(f=>`<tr><td><a href="${esc(dl(id,f.name))}" target="_blank" rel="noopener" title="Download from archive.org">${esc(f.name)}</a></td><td>${esc(f.format||"")}</td><td>${fsz(+f.size)}</td></tr>`).join("")}</table>`;
+    dr.querySelector(".x").onclick=closeDr;
+    $("#emb").onclick=e=>{e.preventDefault();$("#embx").innerHTML=`<iframe loading="lazy" allowfullscreen src="https://archive.org/embed/${encodeURIComponent(id)}"></iframe>`};markRL();
+  }catch(err){dr.innerHTML=X+"<p>⚠ "+esc(err.message)+"</p>";dr.querySelector(".x").onclick=closeDr}
+}
+
+// ---- Wayback capture diff ----
+let sel=[];
+function wirePick(prefix){
+  const c=$("#cmp");if(!c)return;
+  if(prefix){c.innerHTML="";return}
+  document.querySelectorAll(".pk").forEach(b=>b.onchange=()=>{const k=b.dataset.k;sel=sel.filter(x=>x!==k);if(b.checked)sel.push(k);sel=sel.slice(-2);document.querySelectorAll(".pk").forEach(x=>x.checked=sel.includes(x.dataset.k));wirePick(false)});
+  c.innerHTML=`<span class="meta">Tick two captures to compare their text.</span> <button id="cb" class="go" ${sel.length<2?"disabled":""} title="Fetches both captures raw (Wayback id_ mode) and diffs the visible text">Compare ${sel.length}/2</button>`;
+  $("#cb").onclick=doDiff;
+}
+function diffLines(a,b){
+  const n=a.length,m=b.length,w=m+1,t=new Uint16Array((n+1)*w),o=[];
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)t[i*w+j]=a[i]===b[j]?t[(i+1)*w+j+1]+1:Math.max(t[(i+1)*w+j],t[i*w+j+1]);
+  let i=0,j=0;
+  while(i<n&&j<m){if(a[i]===b[j]){o.push([0,a[i]]);i++;j++}else if(t[(i+1)*w+j]>=t[i*w+j+1])o.push([-1,a[i++]]);else o.push([1,b[j++]])}
+  while(i<n)o.push([-1,a[i++]]);while(j<m)o.push([1,b[j++]]);return o;
+}
+async function doDiff(){
+  const out=$("#diffout"),[a,b]=sel.map(k=>k.split("|")).sort((x,y)=>x[0]<y[0]?-1:1);
+  const links=`<a href="${esc(wb(a[0],a[1]))}" target="_blank" rel="noopener">older ↗</a> · <a href="${esc(wb(b[0],b[1]))}" target="_blank" rel="noopener">newer ↗</a>`;
+  out.innerHTML='<p class="meta">Fetching both captures…</p>';
+  const get=async([ts,u])=>{
+    const h=await polite(`https://web.archive.org/web/${ts}id_/${u}`,true);
+    const d=new DOMParser().parseFromString(h,"text/html");d.querySelectorAll("script,style,noscript").forEach(e=>e.remove());
+    return (d.body?d.body.textContent:h).split(/\n|(?<=[.!?])\s+/).map(x=>x.trim().replace(/\s+/g," ")).filter(Boolean).slice(0,1500);
+  };
+  try{
+    const A=await get(a),B=await get(b);let h="",skip=0,ch=0;
+    const flush=()=>{if(skip){h+=`<div class="meta">… ${skip} unchanged line${skip>1?"s":""}</div>`;skip=0}};
+    for(const [t,x] of diffLines(A,B)){if(!t){skip++;continue}flush();ch++;h+=`<div class="${t<0?"del":"add"}">${t<0?"− ":"+ "}${esc(x)}</div>`}
+    flush();
+    out.innerHTML=`<div class="snap"><b>${fmt(a[0])}</b> → <b>${fmt(b[0])}</b> · ${ch?ch+" changed lines":"no visible text changes"} · ${links}</div>${h}`;
+  }catch(err){
+    out.innerHTML=`<div class="note">Couldn’t read the captures in-page (${esc(err.message)}). The Wayback Machine may block cross-origin reads for some captures. Open them side by side instead: ${links}</div>`;
+  }
+}
+
+// ---- archive.org health pill ----
+const DASH="https://4uffin.github.io/internet-archive-status-dashboard/";
+function setHealth(s,ms,why){
+  const hp=$("#hp"),L={ok:"responding",slow:"slow",down:"having trouble",limited:"rate-limiting us"};
+  hp.dataset.s=s;hp.textContent="● archive.org: "+L[s]+(ms?" · "+(ms<1000?ms+" ms":(ms/1000).toFixed(1)+" s"):"");
+  hp.title="Last seen "+new Date().toLocaleTimeString()+(why?" — "+why:"")+". Click to run one small probe request.";
+  const b=$("#hbn");b.hidden=s==="ok";
+  if(s!=="ok")b.innerHTML=esc(({slow:"archive.org is answering slowly right now, so searches may take a while or time out.",down:"archive.org isn’t responding normally ("+(why||"error")+"). Searches may fail — try again in a few minutes.",limited:"archive.org asked us to slow down. Wait a minute before searching again."})[s])+` See the <a href="${DASH}#status" target="_blank" rel="noopener">status dashboard</a> or its <a href="${DASH}#tides" target="_blank" rel="noopener">Archive Tides</a> forecast for calmer times to search.`;
+}
+$("#hp").onclick=()=>polite("https://archive.org/advancedsearch.php?q=identifier%3Aa&rows=0&output=json&_="+Date.now()).catch(e=>{$("#status").textContent="⚠ "+e.message});
+
+// ---- saved searches + reading list (localStorage) ----
+const store={g(k){try{const v=JSON.parse(localStorage.getItem(k));return Array.isArray(v)?v:[]}catch{return[]}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{return false}}};
+let saved=store.g("as:saved"),rl=store.g("as:rl");
+const inRL=id=>rl.some(x=>x.id===id);
+const markRL=()=>document.querySelectorAll("a.rl").forEach(a=>a.textContent=inRL(a.dataset.id)?"✓ in list":"+ list");
+function persist(){const a=store.s("as:saved",saved),b=store.s("as:rl",rl);if(!(a&&b)&&$("#libmsg"))$("#libmsg").textContent="Browser storage unavailable — changes won’t persist."}
+function toggleRL(id,t){rl=inRL(id)?rl.filter(x=>x.id!==id):[{id,t:t||id,at:Date.now()},...rl];persist();renderLib();markRL()}
+function curParams(){return new URLSearchParams({m:mode,q:$("#q").value.trim(),p:1,...(mode!=="wb"?{ty:val("#ty",""),so:val("#so",""),co:val("#co",""),la:val("#la",""),y1:val("#y1",""),y2:val("#y2","")}:{sc:val("#sc",""),st:val("#st","")})})}
+function saveSearch(){
+  const p=curParams(),h=p.toString();
+  if(!p.get("q")&&!/(ty|co|la|y1|y2)=[^&]/.test(h)){$("#status").textContent="Nothing to save yet.";return}
+  if(!saved.some(x=>x.h===h)){saved=[{h,lab:(p.get("q")||"(filters only)")+({items:" · items",wb:" · Wayback",both:" · both"}[mode]),at:Date.now()},...saved].slice(0,100);persist();renderLib()}
+  $("#status").textContent="Search saved.";
+}
+$("#sv").onclick=saveSearch;
+function renderLib(){
+  $("#lib summary").textContent=`Saved searches (${saved.length}) and reading list (${rl.length})`;
+  const ss=saved.map((x,i)=>`<div class="li"><a href="#${esc(x.h)}" class="ss" data-h="${esc(x.h)}" title="Run this search">${esc(x.lab)}</a> <a href="#" class="rm" data-k="s" data-i="${i}" title="Remove">×</a></div>`).join("")||'<div class="meta">None yet — press s or ☆ Save.</div>';
+  const rr=rl.map((x,i)=>`<div class="li"><a class="open" data-id="${esc(x.id)}" href="https://archive.org/details/${encodeURIComponent(x.id)}" title="Preview details">${esc(x.t)}</a> <a href="#" class="rm" data-k="r" data-i="${i}" title="Remove">×</a></div>`).join("")||'<div class="meta">Empty — use “+ list” on any item.</div>';
+  $("#libb").innerHTML=`<div class="libcols"><div><h4>Saved searches</h4>${ss}</div><div><h4>Reading list</h4>${rr}</div></div>
+  <div class="meta"><a href="#" id="ex" title="Download both lists as JSON">Export</a> · <label>Import <input type="file" id="im" accept="application/json" title="Merge a previously exported file"></label> <span id="libmsg"></span></div>`;
+}
+$("#libb").addEventListener("click",e=>{
+  const a=e.target.closest("a.ss,a.rm,#ex");if(!a)return;
+  if(a.classList.contains("ss")){e.preventDefault();applyHash(a.dataset.h)}
+  else if(a.classList.contains("rm")){e.preventDefault();(a.dataset.k==="s"?saved:rl).splice(+a.dataset.i,1);persist();renderLib();markRL()}
+  else{e.preventDefault();const u=URL.createObjectURL(new Blob([JSON.stringify({saved,rl},null,1)],{type:"application/json"})),d=document.createElement("a");d.href=u;d.download="archive-seek-library.json";d.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+});
+$("#libb").addEventListener("change",async e=>{
+  if(e.target.id!=="im"||!e.target.files[0])return;
+  try{
+    const j=JSON.parse(await e.target.files[0].text()),S=x=>String(x==null?"":x);
+    const mg=(cur,inc,k)=>{const seen=new Set(cur.map(x=>x[k]));return[...cur,...inc.filter(x=>x[k]&&!seen.has(x[k]))]};
+    saved=mg(saved,(Array.isArray(j.saved)?j.saved:[]).map(x=>({h:S(x&&x.h),lab:S(x&&(x.lab||x.h)),at:0})),"h").slice(0,100);
+    rl=mg(rl,(Array.isArray(j.rl)?j.rl:[]).map(x=>({id:S(x&&x.id),t:S(x&&(x.t||x.id)),at:0})),"id");
+    persist();renderLib();markRL();$("#libmsg").textContent="Imported.";
+  }catch{$("#libmsg").textContent="That file isn’t a valid export."}
+});
+
+// ---- keyboard shortcuts ----
+let cur=-1;
+const navEls=()=>[...document.querySelectorAll("#out .item,#out .row")];
+function moveSel(d){const e=navEls();if(!e.length)return;if(e[cur])e[cur].classList.remove("sel");cur=Math.max(0,Math.min(e.length-1,cur+d));e[cur].classList.add("sel");e[cur].scrollIntoView({block:"nearest"})}
+document.addEventListener("keydown",e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const t=e.target,typing=/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)&&t.type!=="checkbox";
+  if(e.key==="Escape"){if(typing)t.blur();return}
+  if(typing)return;
+  const k=e.key,el=navEls()[cur];
+  if(k==="/"){e.preventDefault();$("#q").focus();$("#q").select()}
+  else if(k==="j")moveSel(1);else if(k==="k")moveSel(-1);
+  else if(k==="n"&&$("#nx"))$("#nx").click();else if(k==="p"&&$("#pv"))$("#pv").click();
+  else if((k==="Enter"||k==="o")&&el){const a=el.querySelector("a");if(a)a.click()}
+  else if(k==="l"&&el){const a=el.querySelector("a.open");if(a)toggleRL(a.dataset.id,a.dataset.t)}
+  else if(k==="s"){e.preventDefault();saveSearch()}
+  else if("123".includes(k)&&k.length===1)document.querySelectorAll(".tabs button")[+k-1].click();
+  else if(k==="?")$("#help").hidden=!$("#help").hidden;
+});
+
 // restore from shareable hash (does not auto-search unless a query is present)
-(function(){
-  const h=new URLSearchParams(location.hash.slice(1));
-  setMode(h.get("m")==="wb"?"wb":"items");
+function applyHash(str){
+  const h=new URLSearchParams(str);
+  setMode(["items","wb"].includes(h.get("m"))?h.get("m"):"both");
   if(h.get("q")!==null)$("#q").value=h.get("q");
-  if(mode==="items"){if(h.get("ty"))$("#ty").value=h.get("ty");if(h.get("so"))$("#so").value=h.get("so")}
+  if(mode!=="wb"){[["ty","#ty"],["so","#so"],["co","#co"],["la","#la"],["y1","#y1"],["y2","#y2"]].forEach(([k,i])=>{if(h.get(k)&&$(i))$(i).value=h.get(k)})}
   else{if(h.get("sc"))$("#sc").value=h.get("sc");if(h.get("st")!==null)$("#st").value=h.get("st")}
   page=+h.get("p")||1;
-  if(h.get("q"))run();
-})();
+  (async()=>{if(h.get("q"))await run();if(h.get("i"))openItem(h.get("i"))})();
+}
+applyHash(location.hash.slice(1));renderLib();
 </script>
 </body>
 </html>
